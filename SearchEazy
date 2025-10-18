@@ -1,0 +1,395 @@
+# SearchEazy — Multi-page Next.js Preview (MVP)
+
+Below is a **multi-page Next.js (pages directory)** preview scaffold you can copy into a starter project. It includes: Home (landing), Jobs list, Job detail (with structured data), Post Job (employer flow stub), Apply page (candidate flow), Employer Login stub, and basic API mock routes. This preview is focused on **SEO, clear routing, and production-ready patterns** (use Next.js, Tailwind, and server-side rendering where noted).
+
+---
+
+## How to use
+1. Create a Next.js app (recommended Node 18+):
+   ```bash
+   npx create-next-app@latest searcheazy-preview --use-npm
+   cd searcheazy-preview
+   npm install tailwindcss framer-motion lucide-react
+   # follow Tailwind setup: npx tailwindcss init -p
+   ```
+2. Replace or add files below into `pages/`, `components/`, `lib/`, and `public/` as shown.
+3. Run `npm run dev` and open `http://localhost:3000`.
+
+---
+
+## package.json (important deps)
+```json
+{
+  "name": "searcheazy-preview",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "framer-motion": "^8.0.0",
+    "lucide-react": "^0.270.0",
+    "next": "^13.5.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
+```
+
+---
+
+## next.config.js
+```js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  images: { domains: ['images.unsplash.com'] }
+}
+module.exports = nextConfig
+```
+
+---
+
+## /pages/_app.js
+```jsx
+import '../styles/globals.css'
+export default function MyApp({ Component, pageProps }) {
+  return <Component {...pageProps} />
+}
+```
+
+---
+
+## /components/Header.js
+```jsx
+import Link from 'next/link'
+import { Search } from 'lucide-react'
+export default function Header(){
+  return (
+    <header className="bg-white shadow sticky top-0 z-40">
+      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded flex items-center justify-center border-2 border-sky-600">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6" stroke="#0B63C6" strokeWidth="2"/><path d="M16 16 L21 21" stroke="#2E9A3A" strokeWidth="2" strokeLinecap="round"/></svg>
+          </div>
+          <span className="font-bold text-xl text-gray-800">Search<span className="text-emerald-600">Eazy</span></span>
+        </Link>
+
+        <nav className="hidden md:flex gap-6 text-gray-600">
+          <Link href="/jobs">Jobs</Link>
+          <Link href="/pricing">Pricing</Link>
+          <Link href="/post-job">Post a Job</Link>
+          <Link href="/login">Employer Login</Link>
+        </nav>
+      </div>
+    </header>
+  )
+}
+```
+
+---
+
+## /components/Footer.js
+```jsx
+export default function Footer(){
+  return (
+    <footer className="bg-gray-900 text-gray-300 py-8 mt-12">
+      <div className="container mx-auto px-6 text-center">
+        <p>Contact: <a href="mailto:support@searcheazy.com" className="text-emerald-400">support@searcheazy.com</a></p>
+        <p className="mt-2">© {new Date().getFullYear()} SearchEazy — All rights reserved.</p>
+      </div>
+    </footer>
+  )
+}
+```
+
+---
+
+## /lib/mock-db.js (simple mock for preview)
+```js
+export const jobs = [
+  { id: 1, slug: 'senior-software-engineer-san-francisco-ca', title: 'Senior Software Engineer', company: 'BlueWave', location: 'San Francisco, CA', category: 'Technical', type: 'Full-time', datePosted: '2025-10-01', description: '<p>Work on scalable systems. 5+ years required.</p>' },
+  { id: 2, slug: 'registered-nurse-chicago-il', title: 'Registered Nurse', company: 'CareFirst', location: 'Chicago, IL', category: 'Healthcare', type: 'Full-time', datePosted: '2025-09-22', description: '<p>Provide patient care across multiple units.</p>' },
+  { id: 3, slug: 'customer-support-specialist-remote', title: 'Customer Support Specialist', company: 'HelpDesk', location: 'Remote', category: 'Non-Technical', type: 'Part-time', datePosted: '2025-09-30', description: '<p>Support customers via email and chat.</p>' }
+]
+
+export function getAllJobs(){ return jobs }
+export function getJobBySlug(slug){ return jobs.find(j=>j.slug===slug) }
+```
+
+---
+
+## /pages/index.js (landing — SEO-ready)
+```jsx
+import Head from 'next/head'
+import Link from 'next/link'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
+
+export default function Home(){
+  return (
+    <>
+      <Head>
+        <title>SearchEazy — Job Board & ATS for Tech, Healthcare & Non-Tech</title>
+        <meta name="description" content="SearchEazy connects employers and candidates across the US. Post jobs, upload resumes, and hire faster." />
+        <link rel="canonical" href="https://www.searcheazy.com/" />
+      </Head>
+
+      <Header />
+      <main className="container mx-auto px-6 py-12">
+        <section className="text-center py-12">
+          <h1 className="text-4xl font-extrabold">Hire Smarter. Find Faster.</h1>
+          <p className="mt-4 text-gray-600">SearchEazy — Professional job board + ATS focused on Technical, Healthcare, and Non-Technical roles in the USA.</p>
+          <div className="mt-6 flex justify-center gap-4">
+            <Link href="/jobs" className="bg-sky-600 text-white px-4 py-2 rounded">Search Jobs</Link>
+            <Link href="/post-job" className="border border-sky-600 text-sky-600 px-4 py-2 rounded">Post a Job</Link>
+          </div>
+        </section>
+
+        <section className="grid md:grid-cols-3 gap-6 mt-10">
+          <div className="p-6 border rounded">
+            <h3 className="font-bold mb-2">Technical</h3>
+            <p className="text-gray-600">Engineering, DevOps, Data, Product roles.</p>
+          </div>
+          <div className="p-6 border rounded">
+            <h3 className="font-bold mb-2">Healthcare</h3>
+            <p className="text-gray-600">Nursing, allied health, administrative healthcare roles.</p>
+          </div>
+          <div className="p-6 border rounded">
+            <h3 className="font-bold mb-2">Non-Technical</h3>
+            <p className="text-gray-600">Customer support, operations, sales, HR.</p>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </>
+  )
+}
+```
+
+---
+
+## /pages/jobs/index.js (jobs list — SSR recommended in production)
+```jsx
+import Head from 'next/head'
+import Link from 'next/link'
+import Header from '../../components/Header'
+import Footer from '../../components/Footer'
+import { getAllJobs } from '../../lib/mock-db'
+
+export async function getServerSideProps(){
+  const jobs = getAllJobs()
+  return { props: { jobs } }
+}
+
+export default function Jobs({ jobs }){
+  return (
+    <>
+      <Head>
+        <title>Jobs — SearchEazy</title>
+        <meta name="description" content="Browse technical, healthcare and non-technical jobs across the USA." />
+      </Head>
+      <Header />
+      <main className="container mx-auto px-6 py-12">
+        <h2 className="text-2xl font-bold mb-6">Open Positions</h2>
+        <div className="space-y-4">
+          {jobs.map(job=> (
+            <div key={job.id} className="p-4 border rounded flex justify-between items-center">
+              <div>
+                <Link href={`/jobs/${job.slug}`} className="font-semibold text-sky-700">{job.title}</Link>
+                <div className="text-sm text-gray-600">{job.company} • {job.location}</div>
+              </div>
+              <div className="text-sm text-gray-500">{job.datePosted}</div>
+            </div>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </>
+  )
+}
+```
+
+---
+
+## /pages/jobs/[slug].js (Job detail — SSG/ISR recommended in production)
+```jsx
+import Head from 'next/head'
+import Header from '../../components/Header'
+import Footer from '../../components/Footer'
+import { getJobBySlug, getAllJobs } from '../../lib/mock-db'
+
+export async function getServerSideProps({ params }){
+  const job = getJobBySlug(params.slug)
+  if(!job) return { notFound: true }
+  return { props: { job } }
+}
+
+export default function JobDetail({ job }){
+  const jsonLd = {
+    '@context':'https://schema.org',
+    '@type':'JobPosting',
+    title: job.title,
+    description: job.description.replace(/<[^>]*>?/gm, ''),
+    datePosted: job.datePosted,
+    hiringOrganization: { '@type':'Organization', name: job.company },
+    jobLocation: { '@type':'Place', address: { '@type':'PostalAddress', addressLocality: job.location } }
+  }
+
+  return (
+    <>
+      <Head>
+        <title>{job.title} — {job.company} | SearchEazy</title>
+        <meta name="description" content={(job.description.replace(/<[^>]*>?/gm, '').slice(0,150))} />
+        <link rel="canonical" href={`https://www.searcheazy.com/jobs/${job.slug}`} />
+      </Head>
+      <Header />
+      <main className="container mx-auto px-6 py-12">
+        <article className="bg-white p-6 rounded shadow">
+          <h1 className="text-2xl font-bold">{job.title}</h1>
+          <div className="text-sm text-gray-600 mb-4">{job.company} • {job.location} • {job.type}</div>
+          <div dangerouslySetInnerHTML={{ __html: job.description }} />
+          <div className="mt-6">
+            <a href="/apply" className="bg-emerald-600 text-white px-4 py-2 rounded">Apply Now</a>
+          </div>
+        </article>
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      </main>
+      <Footer />
+    </>
+  )
+}
+```
+
+---
+
+## /pages/post-job.js (Employer post job stub)
+```jsx
+import Head from 'next/head'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
+
+export default function PostJob(){
+  return (
+    <>
+      <Head>
+        <title>Post a Job — SearchEazy</title>
+      </Head>
+      <Header />
+      <main className="container mx-auto px-6 py-12">
+        <h2 className="text-2xl font-bold">Post a Job</h2>
+        <p className="text-gray-600 mt-2">Employers must pay to publish a job. (Stripe integration to be connected.)</p>
+
+        <form className="mt-6 max-w-2xl space-y-3">
+          <input className="border rounded px-3 py-2 w-full" placeholder="Company name" />
+          <input className="border rounded px-3 py-2 w-full" placeholder="Job title" />
+          <input className="border rounded px-3 py-2 w-full" placeholder="Location" />
+          <select className="border rounded px-3 py-2 w-full">
+            <option>Technical</option>
+            <option>Healthcare</option>
+            <option>Non-Technical</option>
+          </select>
+          <textarea className="border rounded px-3 py-2 w-full" rows={6} placeholder="Job description (HTML allowed)"></textarea>
+          <div className="flex gap-3">
+            <button className="bg-sky-600 text-white px-4 py-2 rounded">Proceed to Payment</button>
+            <button className="border px-4 py-2 rounded">Save Draft</button>
+          </div>
+        </form>
+      </main>
+      <Footer />
+    </>
+  )
+}
+```
+
+---
+
+## /pages/apply.js (Candidate apply + resume upload stub)
+```jsx
+import Head from 'next/head'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
+
+export default function Apply(){
+  return (
+    <>
+      <Head>
+        <title>Apply — SearchEazy</title>
+      </Head>
+      <Header />
+      <main className="container mx-auto px-6 py-12">
+        <h2 className="text-2xl font-bold">Apply to Job</h2>
+        <p className="text-gray-600 mt-2">Uploading your resume is free for candidates.</p>
+
+        <form className="mt-6 max-w-xl space-y-3">
+          <input className="border rounded px-3 py-2 w-full" placeholder="Full name" />
+          <input className="border rounded px-3 py-2 w-full" placeholder="Email" />
+          <label className="text-sm text-gray-600">Upload resume (PDF/DOCX)</label>
+          <input type="file" className="border rounded px-3 py-2 w-full" />
+          <button className="bg-emerald-600 text-white px-4 py-2 rounded">Submit Application</button>
+        </form>
+      </main>
+      <Footer />
+    </>
+  )
+}
+```
+
+---
+
+## /pages/login.js (Employer login stub)
+```jsx
+import Head from 'next/head'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
+
+export default function Login(){
+  return (
+    <>
+      <Head><title>Employer Login — SearchEazy</title></Head>
+      <Header />
+      <main className="container mx-auto px-6 py-12">
+        <h2 className="text-2xl font-bold">Employer Login</h2>
+        <p className="text-gray-600">(Auth integration placeholder — NextAuth or Clerk recommended.)</p>
+        <form className="mt-6 max-w-sm space-y-3">
+          <input className="border rounded px-3 py-2 w-full" placeholder="Email" />
+          <input className="border rounded px-3 py-2 w-full" type="password" placeholder="Password" />
+          <button className="bg-sky-600 text-white px-4 py-2 rounded">Login</button>
+        </form>
+      </main>
+      <Footer />
+    </>
+  )
+}
+```
+
+---
+
+## /pages/api/jobs.js (simple API mock)
+```js
+import { getAllJobs } from '../../lib/mock-db'
+export default function handler(req, res){
+  if(req.method === 'GET'){
+    return res.status(200).json(getAllJobs())
+  }
+  // POST route to create job should validate auth & accept payment metadata
+  if(req.method === 'POST'){
+    // TODO: create job after Stripe webhook confirms payment
+    return res.status(201).json({ message: 'Job create endpoint (mock)' })
+  }
+  res.status(405).end()
+}
+```
+
+---
+
+## /styles/globals.css (Tailwind base - replace with your Tailwind config)
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #__next { height: 100%; }
+.container { max-width: 1100px; }
