@@ -1,376 +1,349 @@
-## package.json (important deps)
-```json
-{
-  "name": "searcheazy-preview",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "framer-motion": "^8.0.0",
-    "lucide-react": "^0.270.0",
-    "next": "^13.5.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  }
-}
-```
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
 
----
+# Server-side (store in Vercel as SECRET env vars, NOT in .env.local for client use)
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+NEXT_PUBLIC_APP_URL=http://localhost:3000    # change to https://www.searcheazy.com on production
+-- enable uuid gen if not present
+create extension if not exists "uuid-ossp";
 
-## next.config.js
-```js
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
-  images: { domains: ['images.unsplash.com'] }
-}
-module.exports = nextConfig
-```
+create table users (
+  id uuid primary key default uuid_generate_v4(),
+  email text unique not null,
+  full_name text,
+  role text check (role in ('jobseeker', 'employer')) not null default 'jobseeker',
+  avatar_url text,
+  created_at timestamptz default now()
+);
 
----
+create table jobs (
+  id uuid primary key default uuid_generate_v4(),
+  title text not null,
+  description text,
+  company text,
+  location text,
+  salary text,
+  employer_id uuid references users(id),
+  created_at timestamptz default now()
+);
 
-## /pages/_app.js
-```jsx
+create table applications (
+  id uuid primary key default uuid_generate_v4(),
+  job_id uuid references jobs(id),
+  user_id uuid references users(id),
+  resume_url text,
+  status text default 'Applied',
+  created_at timestamptz default now()
+);// lib/supabaseClient.js
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 import '../styles/globals.css'
+
 export default function MyApp({ Component, pageProps }) {
   return <Component {...pageProps} />
 }
-```
-
----
-
-## /components/Header.js
-```jsx
+// pages/login.js
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { Search } from 'lucide-react'
-export default function Header(){
+
+export default function LoginPage() {
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState('jobseeker') // default
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        // redirect based on role stored in our users table
+        (async () => {
+          const { data } = await supabase
+            .from('users')
+            .select('role')
+            .eq('email', session.user.email)
+            .single()
+          const userRole = data?.role || 'jobseeker'
+          router.push(userRole === 'employer' ? '/dashboard/employer' : '/dashboard/jobseeker')
+        })()
+      }
+    })
+    return () => authListener?.subscription?.unsubscribe()
+  }, [router])
+
+  async function signUpWithEmail(e) {
+    e.preventDefault()
+    setLoading(true)
+    // create auth user
+    const { user, error } = await supabase.auth.signUp({ email, password })
+    if (error) {
+      alert(error.message)
+      setLoading(false)
+      return
+    }
+    // create profile row in users table
+    // NOTE: this is safe because signUp requires email verification in many apps; alternatives: use server-side function
+    await supabase.from('users').upsert({
+      email,
+      full_name: '',
+      role
+    })
+    alert('Check your email for a confirmation link (if enabled).')
+    setLoading(false)
+  }
+
+  async function signInWithEmail(e) {
+    e.preventDefault()
+    setLoading(true)
+    const { user, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) { alert(error.message); setLoading(false); return }
+    // On successful login, the auth state listener will redirect.
+  }
+
+  async function socialSignIn(provider) {
+    // provider: 'google' | 'linkedin'
+    setLoading(true)
+    const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/` // where user lands after social sign-in
+    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } })
+    if (error) alert(error.message)
+    setLoading(false)
+  }
+
   return (
-    <header className="bg-white shadow sticky top-0 z-40">
-      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded flex items-center justify-center border-2 border-sky-600">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6" stroke="#0B63C6" strokeWidth="2"/><path d="M16 16 L21 21" stroke="#2E9A3A" strokeWidth="2" strokeLinecap="round"/></svg>
-          </div>
-          <span className="font-bold text-xl text-gray-800">Search<span className="text-emerald-600">Eazy</span></span>
-        </Link>
-
-        <nav className="hidden md:flex gap-6 text-gray-600">
-          <Link href="/jobs">Jobs</Link>
-          <Link href="/pricing">Pricing</Link>
-          <Link href="/post-job">Post a Job</Link>
-          <Link href="/login">Employer Login</Link>
-        </nav>
-      </div>
-    </header>
-  )
-}
-```
-
----
-
-## /components/Footer.js
-```jsx
-export default function Footer(){
-  return (
-    <footer className="bg-gray-900 text-gray-300 py-8 mt-12">
-      <div className="container mx-auto px-6 text-center">
-        <p>Contact: <a href="mailto:support@searcheazy.com" className="text-emerald-400">support@searcheazy.com</a></p>
-        <p className="mt-2">© {new Date().getFullYear()} SearchEazy — All rights reserved.</p>
-      </div>
-    </footer>
-  )
-}
-```
-
----
-
-## /lib/mock-db.js (simple mock for preview)
-```js
-export const jobs = [
-  { id: 1, slug: 'senior-software-engineer-san-francisco-ca', title: 'Senior Software Engineer', company: 'BlueWave', location: 'San Francisco, CA', category: 'Technical', type: 'Full-time', datePosted: '2025-10-01', description: '<p>Work on scalable systems. 5+ years required.</p>' },
-  { id: 2, slug: 'registered-nurse-chicago-il', title: 'Registered Nurse', company: 'CareFirst', location: 'Chicago, IL', category: 'Healthcare', type: 'Full-time', datePosted: '2025-09-22', description: '<p>Provide patient care across multiple units.</p>' },
-  { id: 3, slug: 'customer-support-specialist-remote', title: 'Customer Support Specialist', company: 'HelpDesk', location: 'Remote', category: 'Non-Technical', type: 'Part-time', datePosted: '2025-09-30', description: '<p>Support customers via email and chat.</p>' }
-]
-
-export function getAllJobs(){ return jobs }
-export function getJobBySlug(slug){ return jobs.find(j=>j.slug===slug) }
-```
-
----
-
-## /pages/index.js (landing — SEO-ready)
-```jsx
-import Head from 'next/head'
-import Link from 'next/link'
-import Header from '../components/Header'
-import Footer from '../components/Footer'
-
-export default function Home(){
-  return (
-    <>
-      <Head>
-        <title>SearchEazy — Job Board & ATS for Tech, Healthcare & Non-Tech</title>
-        <meta name="description" content="SearchEazy connects employers and candidates across the US. Post jobs, upload resumes, and hire faster." />
-        <link rel="canonical" href="https://www.searcheazy.com/" />
-      </Head>
-
-      <Header />
-      <main className="container mx-auto px-6 py-12">
-        <section className="text-center py-12">
-          <h1 className="text-4xl font-extrabold">Hire Smarter. Find Faster.</h1>
-          <p className="mt-4 text-gray-600">SearchEazy — Professional job board + ATS focused on Technical, Healthcare, and Non-Technical roles in the USA.</p>
-          <div className="mt-6 flex justify-center gap-4">
-            <Link href="/jobs" className="bg-sky-600 text-white px-4 py-2 rounded">Search Jobs</Link>
-            <Link href="/post-job" className="border border-sky-600 text-sky-600 px-4 py-2 rounded">Post a Job</Link>
-          </div>
-        </section>
-
-        <section className="grid md:grid-cols-3 gap-6 mt-10">
-          <div className="p-6 border rounded">
-            <h3 className="font-bold mb-2">Technical</h3>
-            <p className="text-gray-600">Engineering, DevOps, Data, Product roles.</p>
-          </div>
-          <div className="p-6 border rounded">
-            <h3 className="font-bold mb-2">Healthcare</h3>
-            <p className="text-gray-600">Nursing, allied health, administrative healthcare roles.</p>
-          </div>
-          <div className="p-6 border rounded">
-            <h3 className="font-bold mb-2">Non-Technical</h3>
-            <p className="text-gray-600">Customer support, operations, sales, HR.</p>
-          </div>
-        </section>
-      </main>
-      <Footer />
-    </>
-  )
-}
-```
-
----
-
-## /pages/jobs/index.js (jobs list — SSR recommended in production)
-```jsx
-import Head from 'next/head'
-import Link from 'next/link'
-import Header from '../../components/Header'
-import Footer from '../../components/Footer'
-import { getAllJobs } from '../../lib/mock-db'
-
-export async function getServerSideProps(){
-  const jobs = getAllJobs()
-  return { props: { jobs } }
-}
-
-export default function Jobs({ jobs }){
-  return (
-    <>
-      <Head>
-        <title>Jobs — SearchEazy</title>
-        <meta name="description" content="Browse technical, healthcare and non-technical jobs across the USA." />
-      </Head>
-      <Header />
-      <main className="container mx-auto px-6 py-12">
-        <h2 className="text-2xl font-bold mb-6">Open Positions</h2>
-        <div className="space-y-4">
-          {jobs.map(job=> (
-            <div key={job.id} className="p-4 border rounded flex justify-between items-center">
-              <div>
-                <Link href={`/jobs/${job.slug}`} className="font-semibold text-sky-700">{job.title}</Link>
-                <div className="text-sm text-gray-600">{job.company} • {job.location}</div>
-              </div>
-              <div className="text-sm text-gray-500">{job.datePosted}</div>
-            </div>
-          ))}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-sky-50 to-emerald-50">
+      <div className="max-w-md w-full bg-white rounded-lg shadow p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <img src="/logo.png" alt="SearchEazy" className="w-10 h-10" />
+          <h2 className="text-2xl font-bold text-sky-700">Sign in to SearchEazy</h2>
         </div>
-      </main>
-      <Footer />
-    </>
-  )
-}
-```
 
----
-
-## /pages/jobs/[slug].js (Job detail — SSG/ISR recommended in production)
-```jsx
-import Head from 'next/head'
-import Header from '../../components/Header'
-import Footer from '../../components/Footer'
-import { getJobBySlug, getAllJobs } from '../../lib/mock-db'
-
-export async function getServerSideProps({ params }){
-  const job = getJobBySlug(params.slug)
-  if(!job) return { notFound: true }
-  return { props: { job } }
-}
-
-export default function JobDetail({ job }){
-  const jsonLd = {
-    '@context':'https://schema.org',
-    '@type':'JobPosting',
-    title: job.title,
-    description: job.description.replace(/<[^>]*>?/gm, ''),
-    datePosted: job.datePosted,
-    hiringOrganization: { '@type':'Organization', name: job.company },
-    jobLocation: { '@type':'Place', address: { '@type':'PostalAddress', addressLocality: job.location } }
-  }
-
-  return (
-    <>
-      <Head>
-        <title>{job.title} — {job.company} | SearchEazy</title>
-        <meta name="description" content={(job.description.replace(/<[^>]*>?/gm, '').slice(0,150))} />
-        <link rel="canonical" href={`https://www.searcheazy.com/jobs/${job.slug}`} />
-      </Head>
-      <Header />
-      <main className="container mx-auto px-6 py-12">
-        <article className="bg-white p-6 rounded shadow">
-          <h1 className="text-2xl font-bold">{job.title}</h1>
-          <div className="text-sm text-gray-600 mb-4">{job.company} • {job.location} • {job.type}</div>
-          <div dangerouslySetInnerHTML={{ __html: job.description }} />
-          <div className="mt-6">
-            <a href="/apply" className="bg-emerald-600 text-white px-4 py-2 rounded">Apply Now</a>
+        <div className="mb-4">
+          <label className="text-sm text-gray-600">I am a</label>
+          <div className="mt-2 flex gap-2">
+            <button onClick={() => setRole('jobseeker')} className={`px-3 py-1 rounded ${role==='jobseeker' ? 'bg-sky-600 text-white' : 'border'}`}>Job Seeker</button>
+            <button onClick={() => setRole('employer')} className={`px-3 py-1 rounded ${role==='employer' ? 'bg-emerald-600 text-white' : 'border'}`}>Employer</button>
           </div>
-        </article>
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-      </main>
-      <Footer />
-    </>
-  )
-}
-```
+        </div>
 
----
+        <div className="space-y-3">
+          <button onClick={() => socialSignIn('google')} className="w-full border py-2 rounded">Continue with Google</button>
+          <button onClick={() => socialSignIn('linkedin')} className="w-full border py-2 rounded">Continue with LinkedIn</button>
+        </div>
 
-## /pages/post-job.js (Employer post job stub)
-```jsx
-import Head from 'next/head'
-import Header from '../components/Header'
-import Footer from '../components/Footer'
+        <div className="my-4 text-center text-gray-500">— or —</div>
 
-export default function PostJob(){
-  return (
-    <>
-      <Head>
-        <title>Post a Job — SearchEazy</title>
-      </Head>
-      <Header />
-      <main className="container mx-auto px-6 py-12">
-        <h2 className="text-2xl font-bold">Post a Job</h2>
-        <p className="text-gray-600 mt-2">Employers must pay to publish a job. (Stripe integration to be connected.)</p>
-
-        <form className="mt-6 max-w-2xl space-y-3">
-          <input className="border rounded px-3 py-2 w-full" placeholder="Company name" />
-          <input className="border rounded px-3 py-2 w-full" placeholder="Job title" />
-          <input className="border rounded px-3 py-2 w-full" placeholder="Location" />
-          <select className="border rounded px-3 py-2 w-full">
-            <option>Technical</option>
-            <option>Healthcare</option>
-            <option>Non-Technical</option>
-          </select>
-          <textarea className="border rounded px-3 py-2 w-full" rows={6} placeholder="Job description (HTML allowed)"></textarea>
-          <div className="flex gap-3">
-            <button className="bg-sky-600 text-white px-4 py-2 rounded">Proceed to Payment</button>
-            <button className="border px-4 py-2 rounded">Save Draft</button>
+        <form onSubmit={signInWithEmail} className="space-y-3">
+          <input required value={email} onChange={e=>setEmail(e.target.value)} className="w-full border px-3 py-2 rounded" placeholder="Email" />
+          <input required value={password} onChange={e=>setPassword(e.target.value)} type="password" className="w-full border px-3 py-2 rounded" placeholder="Password" />
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 bg-sky-600 text-white py-2 rounded">Sign In</button>
+            <button type="button" onClick={signUpWithEmail} className="flex-1 border py-2 rounded">Sign Up</button>
           </div>
         </form>
-      </main>
-      <Footer />
-    </>
+
+        <p className="text-sm text-gray-500 mt-4">By continuing you agree to our Terms & Privacy.</p>
+      </div>
+    </div>
   )
 }
-```
+// pages/api/ensure-profile.js
+import { createClient } from '@supabase/supabase-js'
 
----
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
-## /pages/apply.js (Candidate apply + resume upload stub)
-```jsx
-import Head from 'next/head'
-import Header from '../components/Header'
-import Footer from '../components/Footer'
-
-export default function Apply(){
-  return (
-    <>
-      <Head>
-        <title>Apply — SearchEazy</title>
-      </Head>
-      <Header />
-      <main className="container mx-auto px-6 py-12">
-        <h2 className="text-2xl font-bold">Apply to Job</h2>
-        <p className="text-gray-600 mt-2">Uploading your resume is free for candidates.</p>
-
-        <form className="mt-6 max-w-xl space-y-3">
-          <input className="border rounded px-3 py-2 w-full" placeholder="Full name" />
-          <input className="border rounded px-3 py-2 w-full" placeholder="Email" />
-          <label className="text-sm text-gray-600">Upload resume (PDF/DOCX)</label>
-          <input type="file" className="border rounded px-3 py-2 w-full" />
-          <button className="bg-emerald-600 text-white px-4 py-2 rounded">Submit Application</button>
-        </form>
-      </main>
-      <Footer />
-    </>
-  )
+export default async function handler(req, res) {
+  const { email, role = 'jobseeker', full_name = '' } = req.body
+  if (!email) return res.status(400).json({ error: 'Missing email' })
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .upsert({ email, full_name, role }, { onConflict: 'email' })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ data })
 }
-```
+// pages/dashboard/jobseeker/index.js
+import { supabase } from '../../../lib/supabaseClient'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import Router from 'next/router'
 
----
+export default function JobseekerDashboard() {
+  const [session, setSession] = useState(null)
+  const [applications, setApplications] = useState([])
 
-## /pages/login.js (Employer login stub)
-```jsx
-import Head from 'next/head'
-import Header from '../components/Header'
-import Footer from '../components/Footer'
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      if (!data.session) Router.push('/login')
+      else fetchApplications(data.session.user.id)
+    })
+  }, [])
 
-export default function Login(){
-  return (
-    <>
-      <Head><title>Employer Login — SearchEazy</title></Head>
-      <Header />
-      <main className="container mx-auto px-6 py-12">
-        <h2 className="text-2xl font-bold">Employer Login</h2>
-        <p className="text-gray-600">(Auth integration placeholder — NextAuth or Clerk recommended.)</p>
-        <form className="mt-6 max-w-sm space-y-3">
-          <input className="border rounded px-3 py-2 w-full" placeholder="Email" />
-          <input className="border rounded px-3 py-2 w-full" type="password" placeholder="Password" />
-          <button className="bg-sky-600 text-white px-4 py-2 rounded">Login</button>
-        </form>
-      </main>
-      <Footer />
-    </>
-  )
-}
-```
-
----
-
-## /pages/api/jobs.js (simple API mock)
-```js
-import { getAllJobs } from '../../lib/mock-db'
-export default function handler(req, res){
-  if(req.method === 'GET'){
-    return res.status(200).json(getAllJobs())
+  async function fetchApplications(uid) {
+    const { data } = await supabase
+      .from('applications')
+      .select('*, jobs(*)')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+    setApplications(data || [])
   }
-  // POST route to create job should validate auth & accept payment metadata
-  if(req.method === 'POST'){
-    // TODO: create job after Stripe webhook confirms payment
-    return res.status(201).json({ message: 'Job create endpoint (mock)' })
-  }
-  res.status(405).end()
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold text-blue-600">Your Applications</h1>
+      <div className="mt-4 space-y-4">
+        <Link href="/jobs" className="text-sky-700 underline">Browse Jobs</Link>
+        {applications.length === 0 && <div className="text-gray-600">No applications yet.</div>}
+        {applications.map(a => (
+          <div key={a.id} className="p-4 border rounded">
+            <div className="font-semibold">{a.jobs?.title}</div>
+            <div className="text-sm text-gray-600">{a.jobs?.company} • {new Date(a.created_at).toLocaleDateString()}</div>
+            <div className="mt-2">Status: <strong>{a.status}</strong></div>
+            <a className="text-sky-600" href={a.resume_url} target="_blank" rel="noreferrer">View Resume</a>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
-```
+// pages/dashboard/employer/index.js
+import { useEffect, useState } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
+import Router from 'next/router'
 
----
+export default function EmployerDashboard() {
+  const [session, setSession] = useState(null)
+  const [jobs, setJobs] = useState([])
 
-## /styles/globals.css (Tailwind base - replace with your Tailwind config)
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      if (!data.session) Router.push('/login')
+      else loadMyJobs(data.session.user.email)
+    })
+  }, [])
 
-html, body, #__next { height: 100%; }
-.container { max-width: 1100px; }
+  async function loadMyJobs(email) {
+    // assume employer's user record exists and id is used as employer_id in jobs
+    const { data: userData } = await supabase.from('users').select('id').eq('email', email).single()
+    const { data: jobsData } = await supabase.from('jobs').select('*').eq('employer_id', userData?.id).order('created_at', { ascending: false })
+    setJobs(jobsData || [])
+  }
+
+  async function viewApplicants(jobId) {
+    Router.push(`/dashboard/employer/job/${jobId}`)
+  }
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold text-emerald-600">Employer Dashboard</h1>
+      <div className="mt-4">
+        <a className="bg-sky-600 text-white px-4 py-2 rounded" href="/post-job">Post New Job</a>
+      </div>
+      <div className="mt-6 space-y-4">
+        {jobs.map(j => (
+          <div key={j.id} className="p-4 border rounded flex justify-between items-center">
+            <div>
+              <div className="font-semibold">{j.title}</div>
+              <div className="text-sm text-gray-600">{j.company} • {j.location}</div>
+            </div>
+            <div>
+              <button onClick={() => viewApplicants(j.id)} className="border px-3 py-1 rounded">View Applicants</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+// components/ResumeUpload.js
+import { supabase } from '../lib/supabaseClient'
+import { useState } from 'react'
+
+export default function ResumeUpload({ userId }) {
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+
+  async function upload() {
+    if (!file) return alert('Select a file')
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const filePath = `${userId}/${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage.from('resumes').upload(filePath, file, { cacheControl: '3600', upsert: true })
+    if (error) {
+      alert(error.message)
+      setUploading(false)
+      return
+    }
+    // get public URL (if bucket public) or create signed url
+    const { data: publicData } = supabase.storage.from('resumes').getPublicUrl(filePath)
+    const publicUrl = publicData.publicUrl
+    // Save resume URL to resumes/applications or users table depending on your design
+    await supabase.from('users').upsert({ email: supabase.auth.user()?.email, avatar_url: publicUrl }, { onConflict: 'email' })
+    alert('Uploaded!')
+    setUploading(false)
+  }
+
+  return (
+    <div>
+      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <button onClick={upload} disabled={uploading} className="bg-emerald-600 text-white px-3 py-1 rounded ml-2">
+        {uploading ? 'Uploading...' : 'Upload Resume'}
+      </button>
+    </div>
+  )
+}
+// pages/post-job.js
+import { supabase } from '../lib/supabaseClient'
+import { useState, useEffect } from 'react'
+import Router from 'next/router'
+
+export default function PostJob() {
+  const [title, setTitle] = useState('')
+  const [company, setCompany] = useState('')
+  const [location, setLocation] = useState('')
+  const [description, setDescription] = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    const session = await supabase.auth.getSession()
+    if (!session.data.session) return Router.push('/login')
+    const email = session.data.session.user.email
+    const { data: user } = await supabase.from('users').select('id').eq('email', email).single()
+    const { error } = await supabase.from('jobs').insert([{
+      title, company, location, description, employer_id: user.id
+    }])
+    if (error) return alert(error.message)
+    alert('Job posted!')
+    Router.push('/dashboard/employer')
+  }
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold">Post a Job</h1>
+      <form onSubmit={submit} className="max-w-2xl space-y-3 mt-4">
+        <input required value={title} onChange={e=>setTitle(e.target.value)} className="w-full border p-2" placeholder="Job title" />
+        <input required value={company} onChange={e=>setCompany(e.target.value)} className="w-full border p-2" placeholder="Company" />
+        <input value={location} onChange={e=>setLocation(e.target.value)} className="w-full border p-2" placeholder="Location" />
+        <textarea required value={description} onChange={e=>setDescription(e.target.value)} className="w-full border p-2" rows="6" placeholder="Job description (HTML allowed)"></textarea>
+        <button className="bg-sky-600 text-white px-4 py-2 rounded">Post Job</button>
+      </form>
+    </div>
+  )
+}
+// client-side example
+const session = await supabase.auth.getSession()
+const uid = session.data.session.user.id
+const { error } = await supabase.from('applications').insert([{
+  job_id: JOB_ID,
+  user_id: uid,
+  resume_url: RESUME_PUBLIC_URL
+}])
+
