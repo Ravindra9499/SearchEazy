@@ -1,22 +1,3 @@
-# SearchEazy — Multi-page Next.js Preview (MVP)
-
-Below is a **multi-page Next.js (pages directory)** preview scaffold you can copy into a starter project. It includes: Home (landing), Jobs list, Job detail (with structured data), Post Job (employer flow stub), Apply page (candidate flow), Employer Login stub, and basic API mock routes. This preview is focused on **SEO, clear routing, and production-ready patterns** (use Next.js, Tailwind, and server-side rendering where noted).
-
----
-
-## How to use
-1. Create a Next.js app (recommended Node 18+):
-   ```bash
-   npx create-next-app@latest searcheazy-preview --use-npm
-   cd searcheazy-preview
-   npm install tailwindcss framer-motion lucide-react
-   # follow Tailwind setup: npx tailwindcss init -p
-   ```
-2. Replace or add files below into `pages/`, `components/`, `lib/`, and `public/` as shown.
-3. Run `npm run dev` and open `http://localhost:3000`.
-
----
-
 ## package.json (important deps)
 ```json
 {
