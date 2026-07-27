@@ -25,19 +25,46 @@ export default function MyProfilePage() {
     setProfileCompletion,
   ] = useState(0);
 
-  const [profile, setProfile] =
-    useState({
-      fullname: "",
-      title: "",
-      skills: "",
-      experience: "",
-      education: "",
-      location: "",
-      zipcode: "",
-      summary: "",
-      remote: false,
-      resumeurl: "",
-    });
+  const [profile, setProfile] = useState({
+  // Existing
+  fullname: "",
+  title: "",
+  skills: "",
+  experience: "",
+  education: "",
+  location: "",
+  zipcode: "",
+  summary: "",
+  remote: false,
+  resumeurl: "",
+
+  // Personal
+  first_name: "",
+  last_name: "",
+  phone: "",
+  city: "",
+  state: "",
+
+  // Professional
+  profile_headline: "",
+  current_company: "",
+  profession: "",
+
+  // Career
+  availability_status: "future_opportunities",
+  work_types: [] as string[],
+  work_location: "On-site",
+  expected_salary: "",
+  salary_type: "",
+  notice_period: "",
+
+  // Privacy
+  profile_visibility: "premium_employers",
+  show_email: true,
+  show_phone: false,
+  allow_resume_download: true,
+  searchable: true,
+});
 
   useEffect(() => {
     loadProfile();
@@ -146,6 +173,52 @@ export default function MyProfilePage() {
 
           resumeurl:
             data.resumeurl || "",
+            // Personal
+first_name: data.first_name || "",
+last_name: data.last_name || "",
+phone: data.phone || "",
+city: data.city || "",
+state: data.state || "",
+
+// Professional
+profile_headline: data.profile_headline || "",
+current_company: data.current_company || "",
+profession: data.profession || "",
+
+// Career
+availability_status:
+  data.availability_status || "future_opportunities",
+
+work_types:
+  data.work_types || [],
+
+work_location:
+  data.work_location || "On-site",
+
+expected_salary:
+  data.expected_salary || "",
+
+salary_type:
+  data.salary_type || "",
+
+notice_period:
+  data.notice_period || "",
+
+// Privacy
+profile_visibility:
+  data.profile_visibility || "premium_employers",
+
+show_email:
+  data.show_email ?? true,
+
+show_phone:
+  data.show_phone ?? false,
+
+allow_resume_download:
+  data.allow_resume_download ?? true,
+
+searchable:
+  data.searchable ?? true,
         });
       }
 
@@ -262,7 +335,39 @@ export default function MyProfilePage() {
 
         resumeurl:
           profile.resumeurl,
-      };
+      // Personal
+first_name: profile.first_name,
+last_name: profile.last_name,
+phone: profile.phone,
+city: profile.city,
+state: profile.state,
+
+// Professional
+profile_headline: profile.profile_headline,
+current_company: profile.current_company,
+profession: profile.profession,
+
+// Career
+availability_status: profile.availability_status,
+work_types: profile.work_types,
+work_location: profile.work_location,
+expected_salary:
+  profile.expected_salary === ""
+    ? null
+    : Number(profile.expected_salary),
+salary_type: profile.salary_type,
+notice_period: profile.notice_period,
+
+// Privacy
+profile_visibility: profile.profile_visibility,
+show_email: profile.show_email,
+show_phone: profile.show_phone,
+allow_resume_download: profile.allow_resume_download,
+searchable: profile.searchable,
+
+// Analytics
+profile_updated_at: new Date().toISOString(),
+        };
 
       const {
         data: existing,
