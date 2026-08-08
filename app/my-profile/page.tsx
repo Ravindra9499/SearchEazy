@@ -10,6 +10,7 @@ import { supabase } from "../lib/supabase";
 import ResumeSection from "./components/ResumeSection";
 import PersonalInfo from "./components/PersonalInfo";
 import ProfileCompletion from "./components/ProfileCompletion";
+import CareerPreferences from "./components/CareerPreferences";
 
 export default function MyProfilePage() {
   const [loading, setLoading] =
@@ -586,9 +587,14 @@ profile_updated_at: new Date().toISOString(),
         />
 
         <PersonalInfo
-          profile={profile}
-          setProfile={setProfile}
-        />
+  profile={profile}
+  setProfile={setProfile}
+/>
+
+<CareerPreferences
+  profile={profile}
+  setProfile={setProfile}
+/>
 
         <div
           style={{
