@@ -7,6 +7,10 @@ import {
 
 import { supabase } from "../lib/supabase";
 
+import ResumeSection from "./components/ResumeSection";
+import PersonalInfo from "./components/PersonalInfo";
+import ProfileCompletion from "./components/ProfileCompletion";
+
 export default function MyProfilePage() {
   const [loading, setLoading] =
     useState(true);
@@ -42,6 +46,7 @@ export default function MyProfilePage() {
   first_name: "",
   last_name: "",
   phone: "",
+  email: "",
   city: "",
   state: "",
 
@@ -77,12 +82,17 @@ export default function MyProfilePage() {
   const calculateProfileCompletion =
     () => {
       const fields = [
-        profile.fullname,
+        profile.first_name,
+        profile.last_name,
+        profile.email,
+        profile.phone,
+        profile.city,
+        profile.state,
+        profile.zipcode,
         profile.title,
         profile.skills,
         profile.experience,
         profile.education,
-        profile.location,
         profile.summary,
         profile.resumeurl,
       ];
@@ -174,11 +184,24 @@ export default function MyProfilePage() {
           resumeurl:
             data.resumeurl || "",
             // Personal
-first_name: data.first_name || "",
-last_name: data.last_name || "",
+first_name:
+  data.first_name ||
+  (data.fullname || "").split(" ")[0] ||
+  "",
+last_name:
+  data.last_name ||
+  (data.fullname || "").split(" ").slice(1).join(" ") ||
+  "",
 phone: data.phone || "",
-city: data.city || "",
-state: data.state || "",
+email: user.email || data.useremail || "",
+city:
+  data.city ||
+  (data.location || "").split(",")[0]?.trim() ||
+  "",
+state:
+  data.state ||
+  (data.location || "").split(",").slice(1).join(",").trim() ||
+  "",
 
 // Professional
 profile_headline: data.profile_headline || "",
@@ -307,6 +330,9 @@ searchable:
           user.email,
 
         fullname:
+          [profile.first_name, profile.last_name]
+            .filter(Boolean)
+            .join(" ") ||
           profile.fullname,
 
         title:
@@ -322,6 +348,9 @@ searchable:
           profile.education,
 
         location:
+          [profile.city, profile.state]
+            .filter(Boolean)
+            .join(", ") ||
           profile.location,
 
         zipcode:
@@ -550,94 +579,16 @@ profile_updated_at: new Date().toISOString(),
           </a>
         </div>
 
-        <div
-          style={{
-            background:
-              "white",
+        <ProfileCompletion
+          profileCompletion={
+            profileCompletion
+          }
+        />
 
-            padding:
-              "28px",
-
-            borderRadius:
-              "24px",
-
-            marginBottom:
-              "24px",
-
-            boxShadow:
-              "0 6px 18px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
-            style={{
-              display:
-                "flex",
-
-              justifyContent:
-                "space-between",
-
-              alignItems:
-                "center",
-
-              marginBottom:
-                "14px",
-            }}
-          >
-            <h2
-              style={{
-                margin: 0,
-                color:
-                  "#111827",
-              }}
-            >
-              Profile Completion
-            </h2>
-
-            <div
-              style={{
-                fontWeight:
-                  "bold",
-
-                fontSize:
-                  "22px",
-
-                color:
-                  "#1d4ed8",
-              }}
-            >
-              {profileCompletion}%
-            </div>
-          </div>
-
-          <div
-            style={{
-              width: "100%",
-              height: "14px",
-              background:
-                "#e5e7eb",
-              borderRadius:
-                "999px",
-              overflow:
-                "hidden",
-            }}
-          >
-            <div
-              style={{
-                width:
-                  `${profileCompletion}%`,
-                height:
-                  "100%",
-                background:
-                  profileCompletion >=
-                  80
-                    ? "#16a34a"
-                    : "#1d4ed8",
-                transition:
-                  "0.3s",
-              }}
-            />
-          </div>
-        </div>
+        <PersonalInfo
+          profile={profile}
+          setProfile={setProfile}
+        />
 
         <div
           style={{
@@ -652,8 +603,19 @@ profile_updated_at: new Date().toISOString(),
 
             boxShadow:
               "0 6px 18px rgba(0,0,0,0.05)",
+            marginTop:
+              "24px",
           }}
         >
+          <h2
+            style={{
+              marginTop: 0,
+              marginBottom: "24px",
+              color: "#111827",
+            }}
+          >
+            Professional Information
+          </h2>
           <div
             style={{
               display:
@@ -665,22 +627,6 @@ profile_updated_at: new Date().toISOString(),
               gap: "20px",
             }}
           >
-            <input
-              placeholder="Full Name"
-              value={
-                profile.fullname
-              }
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  fullname:
-                    e.target
-                      .value,
-                })
-              }
-              style={inputStyle}
-            />
-
             <input
               placeholder="Professional Title"
               value={
@@ -738,38 +684,6 @@ profile_updated_at: new Date().toISOString(),
                 setProfile({
                   ...profile,
                   education:
-                    e.target
-                      .value,
-                })
-              }
-              style={inputStyle}
-            />
-
-            <input
-              placeholder="Location"
-              value={
-                profile.location
-              }
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  location:
-                    e.target
-                      .value,
-                })
-              }
-              style={inputStyle}
-            />
-
-            <input
-              placeholder="ZIP Code"
-              value={
-                profile.zipcode
-              }
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  zipcode:
                     e.target
                       .value,
                 })
