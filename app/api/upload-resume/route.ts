@@ -1,47 +1,74 @@
 import { NextResponse } from "next/server";
-
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(
-  req: Request
-) {
+export async function POST(req: Request) {
   try {
-    const data =
-      await req.formData();
+    const data = await req.formData();
 
+    // Accept both field names:
+    // "file" - existing application workflow
+    // "resume" - applicant profile workflow
     const file =
-      data.get("file") as File;
+      (data.get("file") as File | null) ||
+      (data.get("resume") as File | null);
 
     if (!file) {
       return NextResponse.json(
         {
-          error:
-            "No file uploaded",
+          error: "No file uploaded",
         },
         { status: 400 }
       );
     }
 
-    // Convert file
+    // Validate file type
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
 
-    const bytes =
-      await file.arrayBuffer();
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        {
+          error:
+            "Only PDF, DOC, and DOCX files are allowed.",
+        },
+        { status: 400 }
+      );
+    }
 
-    const buffer =
-      Buffer.from(bytes);
+    // Validate file size
+    const maxSize = 10 * 1024 * 1024; // 10 MB
 
-    // Unique filename
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        {
+          error:
+            "Resume file must be smaller than 10 MB.",
+        },
+        { status: 400 }
+      );
+    }
 
-    const fileName =
-      `${Date.now()}-${file.name}`;
+    // Convert file to Buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Create a safe unique filename
+    const originalName = file.name.replace(
+      /[^a-zA-Z0-9._-]/g,
+      "_"
+    );
+
+    const fileName = `${Date.now()}-${originalName}`;
 
     // Upload to Supabase Storage
-
     const { error } =
       await supabase.storage
         .from("resumes")
@@ -50,7 +77,10 @@ export async function POST(
           buffer,
           {
             contentType:
-              file.type,
+              file.type ||
+              "application/octet-stream",
+
+            upsert: false,
           }
         );
 
@@ -63,14 +93,14 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            error.message,
+            error.message ||
+            "Failed to upload resume.",
         },
         { status: 500 }
       );
     }
 
     // Generate public URL
-
     const {
       data: publicUrlData,
     } =
@@ -80,9 +110,29 @@ export async function POST(
           fileName
         );
 
+    const publicUrl =
+      publicUrlData.publicUrl;
+
+    if (!publicUrl) {
+      return NextResponse.json(
+        {
+          error:
+            "Resume uploaded but public URL could not be generated.",
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log(
+      "RESUME UPLOAD SUCCESS:",
+      publicUrl
+    );
+
+    // Return BOTH names for compatibility
+    // with existing SearchEezy code.
     return NextResponse.json({
-      fileUrl:
-        publicUrlData.publicUrl,
+      url: publicUrl,
+      fileUrl: publicUrl,
     });
   } catch (error) {
     console.error(
@@ -93,7 +143,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          "Upload failed",
+          "Upload failed.",
       },
       { status: 500 }
     );

@@ -600,126 +600,58 @@ export default function MyProfilePage() {
   setProfile={setProfile}
 />
 
-        {/* Resume */}
+ {/* Resume */}
 
-        <div
-          style={{
-            background: "white",
-            padding: "32px",
-            borderRadius: "24px",
-            marginTop: "24px",
-            marginBottom: "24px",
-            boxShadow:
-              "0 6px 18px rgba(0,0,0,0.05)",
-          }}
-        >
-          <h2
-            style={{
-              marginTop: 0,
-              marginBottom: "24px",
-              color: "#111827",
-            }}
-          >
-            Resume
-          </h2>
-
-          <label
-            style={{
-              fontWeight: "bold",
-              display: "block",
-              marginBottom: "10px",
-            }}
-          >
-            Upload Resume
-          </label>
-
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={
-              handleResumeUpload
-            }
-          />
-
-          {uploading && (
-            <div
-              style={{
-                marginTop: "12px",
-                color: "#1d4ed8",
-              }}
-            >
-              Uploading resume...
-            </div>
-          )}
-
-          {profile.resumeurl && (
-            <div
-              style={{
-                marginTop: "14px",
-              }}
-            >
-              <a
-                href={
-                  profile.resumeurl
-                }
-                target="_blank"
-                rel="noreferrer"
-              >
-                <button
-                  type="button"
-                  style={{
-                    background:
-                      "#16a34a",
-                    color: "white",
-                    border: "none",
-                    padding:
-                      "12px 18px",
-                    borderRadius:
-                      "10px",
-                    cursor: "pointer",
-                    fontWeight:
-                      "bold",
-                  }}
-                >
-                  View Current Resume
-                </button>
-              </a>
-            </div>
-          )}
-        </div>
-
-        {/* Save Profile */}
-
-        <button
-          type="button"
-          onClick={
-            saveProfile
-          }
-          disabled={saving}
-          style={{
-            marginTop: "6px",
-            marginBottom: "30px",
-            width: "100%",
-            background: "#1d4ed8",
-            color: "white",
-            border: "none",
-            padding: "18px",
-            borderRadius: "14px",
-            fontWeight: "bold",
-            cursor: saving
-              ? "not-allowed"
-              : "pointer",
-            fontSize: "16px",
-            opacity: saving
-              ? 0.7
-              : 1,
-          }}
-        >
-          {saving
-            ? "Saving..."
-            : "Save Profile"}
-        </button>
-      </div>
+    <div
+      style={{
+        background: "white",
+        padding: "32px",
+        borderRadius: "24px",
+        marginTop: "24px",
+        marginBottom: "24px",
+        boxShadow:
+          "0 6px 18px rgba(0,0,0,0.05)",
+      }}
+    >
+      <ResumeSection
+        uploading={uploading}
+        resumeurl={profile.resumeurl}
+        handleResumeUpload={handleResumeUpload}
+      />
     </div>
+
+    {/* Save Profile */}
+
+    <button
+      type="button"
+      onClick={
+        saveProfile
+      }
+      disabled={saving}
+      style={{
+        marginTop: "6px",
+        marginBottom: "30px",
+        width: "100%",
+        background: "#1d4ed8",
+        color: "white",
+        border: "none",
+        padding: "18px",
+        borderRadius: "14px",
+        fontWeight: "bold",
+        cursor: saving
+          ? "not-allowed"
+          : "pointer",
+        fontSize: "16px",
+        opacity: saving
+          ? 0.7
+          : 1,
+      }}
+    >
+      {saving
+        ? "Saving..."
+        : "Save Profile"}
+    </button>
+  </div>
+</div>
   );
 }
