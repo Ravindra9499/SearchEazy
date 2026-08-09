@@ -7,10 +7,12 @@ import {
 
 import { supabase } from "../lib/supabase";
 
+import ResumeSection from "./components/ResumeSection";
 import PersonalInfo from "./components/PersonalInfo";
 import ProfileCompletion from "./components/ProfileCompletion";
 import CareerPreferences from "./components/CareerPreferences";
 import ProfessionalInfo from "./components/ProfessionalInfo";
+import PrivacySettings from "./components/PrivacySettings";
 
 export default function MyProfilePage() {
   const [loading, setLoading] = useState(true);
@@ -589,9 +591,14 @@ export default function MyProfilePage() {
         {/* Professional Information */}
 
         <ProfessionalInfo
-          profile={profile}
-          setProfile={setProfile}
-        />
+  profile={profile}
+  setProfile={setProfile}
+/>
+
+<PrivacySettings
+  profile={profile}
+  setProfile={setProfile}
+/>
 
         {/* Resume */}
 
