@@ -660,41 +660,101 @@ export default function PostJobPage() {
                   "16px",
               }}
             >
-              <option value="">
-                Select Category
-              </option>
+<option value="">
+  Select Category
+</option>
 
-              <option value="Software Engineering">
-                Software Engineering
-              </option>
+<option value="Software Engineering">
+  Software Engineering
+</option>
 
-              <option value="Marketing">
-                Marketing
-              </option>
+<option value="Information Technology">
+  Information Technology
+</option>
 
-              <option value="Sales">
-                Sales
-              </option>
+<option value="Healthcare">
+  Healthcare
+</option>
 
-              <option value="Healthcare">
-                Healthcare
-              </option>
+<option value="Finance & Accounting">
+  Finance & Accounting
+</option>
 
-              <option value="Finance">
-                Finance
-              </option>
+<option value="Marketing">
+  Marketing
+</option>
 
-              <option value="Human Resources">
-                Human Resources
-              </option>
+<option value="Sales">
+  Sales
+</option>
 
-              <option value="Design">
-                Design
-              </option>
+<option value="Human Resources">
+  Human Resources
+</option>
 
-              <option value="Customer Support">
-                Customer Support
-              </option>
+<option value="Customer Support">
+  Customer Support
+</option>
+
+<option value="Administrative & Office">
+  Administrative & Office
+</option>
+
+<option value="Design & Creative">
+  Design & Creative
+</option>
+
+<option value="Engineering">
+  Engineering
+</option>
+
+<option value="Manufacturing">
+  Manufacturing
+</option>
+
+<option value="Electrical & Electronics">
+  Electrical & Electronics
+</option>
+
+<option value="Construction">
+  Construction
+</option>
+
+<option value="Skilled Trades">
+  Skilled Trades
+</option>
+
+<option value="Logistics & Supply Chain">
+  Logistics & Supply Chain
+</option>
+
+<option value="Operations">
+  Operations
+</option>
+
+<option value="Education">
+  Education
+</option>
+
+<option value="Hospitality & Tourism">
+  Hospitality & Tourism
+</option>
+
+<option value="Legal">
+  Legal
+</option>
+
+<option value="Real Estate">
+  Real Estate
+</option>
+
+<option value="Science & Research">
+  Science & Research
+</option>
+
+<option value="Other">
+  Other
+</option>
             </select>
           </div>
 

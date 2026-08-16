@@ -524,6 +524,9 @@ export async function PUT(
           jobType:
             body.jobType,
 
+          category:
+            body.category,
+
           salaryMin:
             body.salaryMin
               ? Number(

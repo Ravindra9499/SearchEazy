@@ -5,7 +5,10 @@ import {
   useState,
 } from "react";
 
-import { useParams } from "next/navigation";
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
 
 import dynamic from "next/dynamic";
 
@@ -17,10 +20,15 @@ const ReactQuill = dynamic(
 );
 
 export default function EditJobPage() {
-  const params =
-    useParams();
+
+  const params = useParams();
+
+  const router = useRouter();
 
   const id = params.id;
+
+  
+
 
   const [title, setTitle] =
     useState("");
@@ -29,10 +37,13 @@ export default function EditJobPage() {
     useState("");
 
   const [location, setLocation] =
-    useState("");
+  useState("");
 
-  const [jobType, setJobType] =
-    useState("");
+const [category, setCategory] =
+  useState("");
+
+const [jobType, setJobType] =
+  useState("");
 
   const [
     salaryMin,
@@ -99,12 +110,16 @@ export default function EditJobPage() {
         );
 
         setLocation(
-          job.location || ""
-        );
+  job.location || ""
+);
 
-        setJobType(
-          job.jobType || ""
-        );
+setCategory(
+  job.category || ""
+);
+
+setJobType(
+  job.jobType || ""
+);
 
         setSalaryMin(
           job.salaryMin?.toString() ||
@@ -142,61 +157,62 @@ export default function EditJobPage() {
       }
     };
 
-  const updateJob =
-    async () => {
-      const res =
-        await fetch(
-          `/api/jobs/${id}`,
-          {
-            method: "PUT",
+const updateJob =
+  async () => {
+    const res =
+      await fetch(
+        "/api/jobs",
+        {
+          method: "PUT",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
 
-            body: JSON.stringify({
-              id,
+          body: JSON.stringify({
+            id,
 
-              // IMPORTANT FIX
-              userEmail,
+            title,
 
-              title,
+            company,
 
-              company,
+            location,
 
-              location,
+            category,
 
-              jobType,
+            jobType,
 
-              salaryMin,
+            salaryMin,
 
-              salaryMax,
+            salaryMax,
 
-              salaryType,
+            salaryType,
 
-              currency,
+            currency,
 
-              screeningQuestions,
+           screeningQuestions,
 
-              description,
-            }),
-          }
-        );
+  description,
 
-      if (res.ok) {
-        alert(
-          "Job updated successfully"
-        );
+  userEmail,
+}),
+        }
+      );
 
-        window.location.href =
-          "/my-jobs";
-      } else {
-        alert(
-          "Failed to update job"
-        );
-      }
-    };
+    if (res.ok) {
+      alert(
+        "Job updated successfully"
+      );
+
+      window.location.href =
+        "/my-jobs";
+    } else {
+      alert(
+        "Failed to update job"
+      );
+    }
+  };
 
   return (
     <div
@@ -309,6 +325,119 @@ export default function EditJobPage() {
             "8px",
         }}
       />
+{/* JOB CATEGORY */}
+
+<select
+  value={category}
+  onChange={(e) =>
+    setCategory(
+      e.target.value
+    )
+  }
+  style={{
+    width: "100%",
+    padding: "14px",
+    marginBottom: "15px",
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+  }}
+>
+  <option value="">
+    Select Category
+  </option>
+
+  <option value="Software Engineering">
+    Software Engineering
+  </option>
+
+  <option value="Information Technology">
+    Information Technology
+  </option>
+
+  <option value="Healthcare">
+    Healthcare
+  </option>
+
+  <option value="Finance & Accounting">
+    Finance & Accounting
+  </option>
+
+  <option value="Marketing">
+    Marketing
+  </option>
+
+  <option value="Sales">
+    Sales
+  </option>
+
+  <option value="Human Resources">
+    Human Resources
+  </option>
+
+  <option value="Customer Support">
+    Customer Support
+  </option>
+
+  <option value="Administrative & Office">
+    Administrative & Office
+  </option>
+
+  <option value="Design & Creative">
+    Design & Creative
+  </option>
+
+  <option value="Engineering">
+    Engineering
+  </option>
+
+  <option value="Manufacturing">
+    Manufacturing
+  </option>
+
+  <option value="Electrical & Electronics">
+    Electrical & Electronics
+  </option>
+
+  <option value="Construction">
+    Construction
+  </option>
+
+  <option value="Skilled Trades">
+    Skilled Trades
+  </option>
+
+  <option value="Logistics & Supply Chain">
+    Logistics & Supply Chain
+  </option>
+
+  <option value="Operations">
+    Operations
+  </option>
+
+  <option value="Education">
+    Education
+  </option>
+
+  <option value="Hospitality & Tourism">
+    Hospitality & Tourism
+  </option>
+
+  <option value="Legal">
+    Legal
+  </option>
+
+  <option value="Real Estate">
+    Real Estate
+  </option>
+
+  <option value="Science & Research">
+    Science & Research
+  </option>
+
+  <option value="Other">
+    Other
+  </option>
+</select>
 
       {/* JOB TYPE */}
 
