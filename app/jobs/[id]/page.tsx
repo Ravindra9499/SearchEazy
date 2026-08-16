@@ -869,6 +869,21 @@ export default function JobDetailsPage() {
                     📍 {job.location}
                   </div>
 
+                  {job.category && (
+  <div
+    style={{
+      background:
+        "rgba(255,255,255,0.15)",
+      padding:
+        "10px 14px",
+      borderRadius:
+        "999px",
+    }}
+  >
+    📂 {job.category}
+  </div>
+)}
+
                   {job.jobType && (
                     <div
                       style={{
