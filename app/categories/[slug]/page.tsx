@@ -368,25 +368,38 @@ export default async function CategoryPage({
   const jobs =
     await res.json();
 
-  const filteredJobs =
+    const filteredJobs =
     jobs.filter(
       (job: any) => {
-        const combined =
-          `
-          ${job.title || ""}
-          ${job.description || ""}
-          ${job.category || ""}
-          ${job.jobType || ""}
-          `
-            .toLowerCase();
+        if (slug === "remote") {
+          return (
+            job.jobType ===
+              "Remote" ||
+            job.jobType ===
+              "Hybrid"
+          );
+        }
 
-        return category.matchKeywords.some(
-          (
-            keyword
-          ) =>
-            combined.includes(
-              keyword.toLowerCase()
-            )
+        const categoryMap: Record<
+          string,
+          string
+        > = {
+          healthcare:
+            "Healthcare",
+
+          "software-engineering":
+            "Software Engineering",
+
+          construction:
+            "Construction",
+
+          manufacturing:
+            "Manufacturing",
+        };
+
+        return (
+          job.category ===
+          categoryMap[slug]
         );
       }
     );
