@@ -290,17 +290,32 @@ export default function HomeClient({
             const searchValue =
               searchTitle.toLowerCase();
 
-            const matchesTitle =
-              job.title
-                ?.toLowerCase()
-                .includes(
-                  searchValue
-                ) ||
-              job.company
-                ?.toLowerCase()
-                .includes(
-                  searchValue
-                );
+           const matchesSearch =
+  job.title
+    ?.toLowerCase()
+    .includes(
+      searchValue
+    ) ||
+  job.company
+    ?.toLowerCase()
+    .includes(
+      searchValue
+    ) ||
+  job.description
+    ?.toLowerCase()
+    .includes(
+      searchValue
+    ) ||
+  job.category
+    ?.toLowerCase()
+    .includes(
+      searchValue
+    ) ||
+  job.jobType
+    ?.toLowerCase()
+    .includes(
+      searchValue
+    );
 
             const matchesLocation =
               job.location
@@ -316,7 +331,7 @@ export default function HomeClient({
                 selectedCategory;
 
             return (
-              matchesTitle &&
+              matchesSearch &&
               matchesLocation &&
               matchesCategory
             );
