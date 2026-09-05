@@ -12,42 +12,63 @@ export async function GET(req: Request) {
        1. VERIFY AUTHENTICATED USER
     ------------------------------------------------------- */
 
-    const authHeader = req.headers.get("authorization");
+    const authHeader =
+      req.headers.get("authorization");
 
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (
+      !authHeader ||
+      !authHeader.startsWith("Bearer ")
+    ) {
       return NextResponse.json(
         {
           error: "Unauthorized",
         },
-        { status: 401 }
+        {
+          status: 401,
+        }
       );
     }
 
     const accessToken =
-      authHeader.replace(
-        "Bearer ",
-        ""
+      authHeader.substring(7).trim();
+
+    if (!accessToken) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
       );
+    }
 
     const {
       data: {
         user,
       },
       error: authError,
-    } = await supabase.auth.getUser(
-      accessToken
-    );
+    } =
+      await supabase.auth.getUser(
+        accessToken
+      );
 
     if (
       authError ||
       !user
     ) {
+      console.error(
+        "RESUME SEARCH AUTH ERROR:",
+        authError
+      );
+
       return NextResponse.json(
         {
-          error:
-            "Unauthorized",
+          error: "Unauthorized",
         },
-        { status: 401 }
+        {
+          status: 401,
+        }
       );
     }
 
@@ -57,18 +78,18 @@ export async function GET(req: Request) {
 
     const {
       data: recruiterProfile,
-      error:
-        recruiterError,
-    } = await supabase
-      .from("profiles")
-      .select(
-        "id, email, role, resumeSearchEnabled"
-      )
-      .eq(
-        "id",
-        user.id
-      )
-      .single();
+      error: recruiterError,
+    } =
+      await supabase
+        .from("profiles")
+        .select(
+          "id, email, role, resumeSearchEnabled"
+        )
+        .eq(
+          "id",
+          user.id
+        )
+        .single();
 
     if (
       recruiterError ||
@@ -82,14 +103,16 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Recruiter profile not found",
+            "Recruiter profile not found.",
         },
-        { status: 403 }
+        {
+          status: 403,
+        }
       );
     }
 
     /* -------------------------------------------------------
-       3. VERIFY EMPLOYER / RECRUITER ACCESS
+       3. VERIFY EMPLOYER / RECRUITER ROLE
     ------------------------------------------------------- */
 
     if (
@@ -99,11 +122,17 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Resume Search is available only to recruiters",
+            "Resume Search is available only to authorized recruiters.",
         },
-        { status: 403 }
+        {
+          status: 403,
+        }
       );
     }
+
+    /* -------------------------------------------------------
+       4. VERIFY RESUME SEARCH ACCESS
+    ------------------------------------------------------- */
 
     if (
       recruiterProfile.resumeSearchEnabled !==
@@ -112,14 +141,16 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Resume Search access is not enabled",
+            "Resume Search access is not enabled for this recruiter.",
         },
-        { status: 403 }
+        {
+          status: 403,
+        }
       );
     }
 
     /* -------------------------------------------------------
-       4. READ SEARCH PARAMETERS
+       5. READ SEARCH PARAMETERS
     ------------------------------------------------------- */
 
     const {
@@ -154,10 +185,9 @@ export async function GET(req: Request) {
       );
 
     /* -------------------------------------------------------
-       5. FETCH CANDIDATE PROFILES
+       6. FETCH SEARCHABLE CANDIDATE PROFILES
        
-       IMPORTANT:
-       Privacy filtering is done on the SERVER.
+       PRIVACY FILTERING IS PERFORMED SERVER-SIDE.
     ------------------------------------------------------- */
 
     let query =
@@ -216,26 +246,19 @@ export async function GET(req: Request) {
           "private"
         );
 
-    /*
-      If the candidate has the legacy
-      "premium_employers" value, keep it
-      temporarily visible to authenticated
-      recruiters rather than accidentally
-      hiding existing candidates.
-
-      The current UI uses:
-      public
-      recruiters
-      private
-    */
+    /* -------------------------------------------------------
+       7. FETCH CANDIDATES
+    ------------------------------------------------------- */
 
     const {
       data: candidates,
-      error:
-        candidatesError,
-    } = await query;
+      error: candidatesError,
+    } =
+      await query;
 
-    if (candidatesError) {
+    if (
+      candidatesError
+    ) {
       console.error(
         "RESUME SEARCH QUERY ERROR:",
         candidatesError
@@ -244,26 +267,32 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Failed to search candidate profiles",
+            "Failed to search candidate profiles.",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       );
     }
 
     /* -------------------------------------------------------
-       6. APPLY SEARCH FILTERS
+       8. APPLY KEYWORD FILTER
     ------------------------------------------------------- */
 
     let filteredCandidates =
       candidates || [];
 
-    if (keyword) {
+    if (
+      keyword
+    ) {
       filteredCandidates =
         filteredCandidates.filter(
           (candidate) => {
             const searchableText =
               [
                 candidate.fullname,
+                candidate.first_name,
+                candidate.last_name,
                 candidate.title,
                 candidate.skills,
                 candidate.experience,
@@ -288,7 +317,13 @@ export async function GET(req: Request) {
         );
     }
 
-    if (location) {
+    /* -------------------------------------------------------
+       9. APPLY LOCATION FILTER
+    ------------------------------------------------------- */
+
+    if (
+      location
+    ) {
       filteredCandidates =
         filteredCandidates.filter(
           (candidate) => {
@@ -310,8 +345,13 @@ export async function GET(req: Request) {
         );
     }
 
+    /* -------------------------------------------------------
+       10. APPLY REMOTE FILTER
+    ------------------------------------------------------- */
+
     if (
-      remote === "true"
+      remote ===
+      "true"
     ) {
       filteredCandidates =
         filteredCandidates.filter(
@@ -320,6 +360,10 @@ export async function GET(req: Request) {
             true
         );
     }
+
+    /* -------------------------------------------------------
+       11. APPLY WORK TYPE FILTER
+    ------------------------------------------------------- */
 
     if (
       workType
@@ -348,21 +392,18 @@ export async function GET(req: Request) {
     }
 
     /* -------------------------------------------------------
-       7. DISTANCE / RADIUS
+       12. RADIUS PARAMETER
        
-       Radius calculation is intentionally
-       not performed here yet because the
-       existing Resume Search page uses
+       The existing Resume Search page handles
        its own location/radius logic.
-
-       We preserve the parameter so the
-       API remains compatible.
+       
+       We preserve the parameter for compatibility.
     ------------------------------------------------------- */
 
     void radius;
 
     /* -------------------------------------------------------
-       8. ENFORCE FIELD-LEVEL PRIVACY
+       13. ENFORCE FIELD-LEVEL PRIVACY
     ------------------------------------------------------- */
 
     const safeCandidates =
@@ -372,9 +413,9 @@ export async function GET(req: Request) {
             ...candidate,
           };
 
-          /*
-            EMAIL PRIVACY
-          */
+          /* -----------------------------------------------
+             EMAIL PRIVACY
+          ------------------------------------------------ */
 
           if (
             candidate.show_email !==
@@ -384,9 +425,9 @@ export async function GET(req: Request) {
               null;
           }
 
-          /*
-            PHONE PRIVACY
-          */
+          /* -----------------------------------------------
+             PHONE PRIVACY
+          ------------------------------------------------ */
 
           if (
             candidate.show_phone !==
@@ -396,9 +437,17 @@ export async function GET(req: Request) {
               null;
           }
 
-          /*
-            RESUME PRIVACY
-          */
+          /* -----------------------------------------------
+             RESUME PRIVACY
+             
+             IMPORTANT:
+             The actual resume is NOT returned unless
+             the candidate explicitly allows it.
+             
+             Even when allowed, the Resume Search page
+             should use /api/resume-access to generate
+             a short-lived signed URL.
+          ------------------------------------------------ */
 
           if (
             candidate.allow_resume_download !==
@@ -413,7 +462,7 @@ export async function GET(req: Request) {
       );
 
     /* -------------------------------------------------------
-       9. RETURN SAFE DATA ONLY
+       14. RETURN SAFE CANDIDATE DATA
     ------------------------------------------------------- */
 
     return NextResponse.json(
@@ -425,6 +474,10 @@ export async function GET(req: Request) {
       },
       {
         status: 200,
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
       }
     );
   } catch (error) {
@@ -436,7 +489,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Failed to perform resume search",
+          "Failed to perform resume search.",
       },
       {
         status: 500,

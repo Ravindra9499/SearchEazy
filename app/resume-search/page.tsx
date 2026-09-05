@@ -108,65 +108,93 @@ export default function ResumeSearchPage() {
         true
       );
 
-      await loadCandidates(
-        user.email
-      );
+      await loadCandidates();
 
       setLoading(false);
     };
 
   const loadCandidates =
-    async (
-      recruiterEmail: string
-    ) => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "candidate_profiles"
-          )
-          .select(
-            `
-            id,
-            fullname,
-            useremail,
-            title,
-            skills,
-            experience,
-            education,
-            location,
-            zipcode,
-            summary,
-            remote,
-            resumeurl,
-            created_at
-            `
-          )
-          .order(
-            "created_at",
+    async () => {
+      try {
+        const {
+          data: {
+            session,
+          },
+        } =
+          await supabase.auth.getSession();
+
+        if (
+          !session?.access_token
+        ) {
+          alert(
+            "Your recruiter session has expired. Please login again."
+          );
+
+          window.location.href =
+            "/login";
+
+          return;
+        }
+
+        const res =
+          await fetch(
+            "/api/resume-search",
             {
-              ascending:
-                false,
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${session.access_token}`,
+              },
+              cache:
+                "no-store",
             }
           );
 
-      if (
-        !recruiterEmail
-      ) {
-        alert(
-          "Unauthorized recruiter access."
-        );
+        const result =
+          await res.json();
 
-        return;
-      }
+        if (!res.ok) {
+          console.error(
+            "RESUME SEARCH API ERROR:",
+            result
+          );
 
-      if (!error && data) {
+          alert(
+            result?.error ||
+              "Unable to load recruiter candidate database."
+          );
+
+          if (
+            res.status === 401 ||
+            res.status === 403
+          ) {
+            window.location.href =
+              "/";
+          }
+
+          return;
+        }
+
+        const data =
+          Array.isArray(
+            result?.candidates
+          )
+            ? result.candidates
+            : [];
+
         setCandidates(data);
 
         setFilteredCandidates(
           data
+        );
+      } catch (error) {
+        console.error(
+          "RESUME SEARCH LOAD ERROR:",
+          error
+        );
+
+        alert(
+          "Failed to load candidate profiles."
         );
       }
     };
@@ -201,10 +229,6 @@ export default function ResumeSearchPage() {
           ) {
             const fullname =
               candidate.fullname?.toLowerCase() ||
-              "";
-
-            const email =
-              candidate.useremail?.toLowerCase() ||
               "";
 
             const title =
@@ -267,8 +291,12 @@ export default function ResumeSearchPage() {
                   matched = true;
                 }
 
+                const candidateEmail =
+                  candidate.useremail?.toLowerCase() ||
+                  "";
+
                 if (
-                  email.includes(
+                  candidateEmail.includes(
                     word
                   )
                 ) {
@@ -508,6 +536,110 @@ export default function ResumeSearchPage() {
         "Candidate shortlisted successfully!"
       );
     };
+
+  const openResume = async (
+    candidate: any
+  ) => {
+    try {
+      const {
+        data: {
+          session,
+        },
+      } =
+        await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        alert(
+          "Your recruiter session has expired. Please login again."
+        );
+
+        window.location.href =
+          "/login";
+
+        return;
+      }
+
+      if (!candidate?.id) {
+        alert(
+          "Candidate information is missing."
+        );
+
+        return;
+      }
+
+      // Open the tab immediately so the browser does not
+      // block it while the secure API request is running.
+      const newWindow =
+        window.open(
+          "about:blank",
+          "_blank"
+        );
+
+      if (!newWindow) {
+        alert(
+          "Please allow pop-ups for SearchEezy to open resumes."
+        );
+
+        return;
+      }
+
+      newWindow.document.write(
+        "<p style='font-family:Arial;padding:30px'>Opening secure resume...</p>"
+      );
+
+      const res =
+        await fetch(
+          `/api/resume-access?candidateId=${encodeURIComponent(
+            String(candidate.id)
+          )}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization:
+                `Bearer ${session.access_token}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+      const result =
+        await res.json();
+
+      if (!res.ok) {
+        newWindow.close();
+
+        alert(
+          result?.error ||
+            "You are not authorized to view this resume."
+        );
+
+        return;
+      }
+
+      if (!result?.url) {
+        newWindow.close();
+
+        alert(
+          "Secure resume URL was not generated."
+        );
+
+        return;
+      }
+
+      // The API returns a short-lived signed URL.
+      newWindow.location.href =
+        result.url;
+    } catch (error) {
+      console.error(
+        "SECURE RESUME ACCESS ERROR:",
+        error
+      );
+
+      alert(
+        "Unable to open the resume. Please try again."
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -1378,49 +1510,45 @@ export default function ResumeSearchPage() {
 
                     {candidate.resumeurl &&
                     authorized && (
-                      <a
-                        href={
-                          candidate.resumeurl
+                      <button
+                        onClick={() =>
+                          openResume(
+                            candidate
+                          )
                         }
-                        target="_blank"
-                        rel="noopener noreferrer"
                         style={{
                           flex: 1,
+
+                          background:
+                            "#16a34a",
+
+                          color:
+                            "white",
+
+                          border:
+                            "none",
+
+                          padding:
+                            "14px 18px",
+
+                          borderRadius:
+                            "12px",
+
+                          cursor:
+                            "pointer",
+
+                          fontWeight:
+                            "bold",
+
+                          width:
+                            "100%",
+
+                          fontSize:
+                            "15px",
                         }}
                       >
-                        <button
-                          style={{
-                            background:
-                              "#16a34a",
-
-                            color:
-                              "white",
-
-                            border:
-                              "none",
-
-                            padding:
-                              "14px 18px",
-
-                            borderRadius:
-                              "12px",
-
-                            cursor:
-                              "pointer",
-
-                            fontWeight:
-                              "bold",
-
-                            width:
-                              "100%",
-
-                            fontSize:
-                              "15px",
-                          }}
-                        >
-                          View Resume
-                        </button>
-                      </a>
+                        View Resume
+                      </button>
                     )}
                   </div>
                 </div>

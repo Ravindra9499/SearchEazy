@@ -12,8 +12,7 @@ import {
 import { supabase } from "../../lib/supabase";
 
 export default function CandidateProfilePage() {
-  const params =
-    useParams();
+  const params = useParams();
 
   const id = params.id;
 
@@ -24,6 +23,9 @@ export default function CandidateProfilePage() {
 
   const [loading, setLoading] =
     useState(true);
+
+  const [resumeLoading, setResumeLoading] =
+    useState(false);
 
   useEffect(() => {
     loadCandidate();
@@ -36,9 +38,7 @@ export default function CandidateProfilePage() {
         error,
       } =
         await supabase
-          .from(
-            "candidate_profiles"
-          )
+          .from("candidate_profiles")
           .select("*")
           .eq("id", id)
           .single();
@@ -50,7 +50,9 @@ export default function CandidateProfilePage() {
       setLoading(false);
     };
 
+  // -------------------------------------------------------
   // SAVE CANDIDATE
+  // -------------------------------------------------------
 
   const saveCandidate =
     async () => {
@@ -144,6 +146,172 @@ export default function CandidateProfilePage() {
       );
     };
 
+  // -------------------------------------------------------
+  // SECURE VIEW RESUME
+  // -------------------------------------------------------
+
+  const viewResume =
+    async () => {
+      /*
+        IMPORTANT:
+
+        Do not open candidate.resumeurl directly.
+
+        The resume must go through:
+
+        /api/resume-access
+
+        so the server can verify:
+        - authenticated user
+        - recruiter/employer access
+        - candidate privacy
+        - allow_resume_download
+      */
+
+      if (
+        candidate.allow_resume_download !==
+        true
+      ) {
+        alert(
+          "This candidate has disabled resume access for recruiters."
+        );
+
+        return;
+      }
+
+      const {
+        data: {
+          session,
+        },
+      } =
+        await supabase.auth.getSession();
+
+      if (
+        !session?.access_token
+      ) {
+        alert(
+          "Please login first."
+        );
+
+        return;
+      }
+
+      /*
+        Open a blank tab immediately from
+        the button click so the browser does
+        not block the new tab as a popup.
+      */
+
+      const resumeWindow =
+        window.open(
+          "",
+          "_blank"
+        );
+
+      if (!resumeWindow) {
+        alert(
+          "Please allow pop-ups for SearchEezy to view the resume."
+        );
+
+        return;
+      }
+
+      resumeWindow.document.write(
+        `
+          <html>
+            <head>
+              <title>Opening Resume...</title>
+            </head>
+            <body style="font-family: Arial; padding: 40px;">
+              Opening resume...
+            </body>
+          </html>
+        `
+      );
+
+      setResumeLoading(true);
+
+      try {
+        const response =
+          await fetch(
+            `/api/resume-access?candidateId=${encodeURIComponent(
+              String(candidate.id)
+            )}`,
+            {
+              method: "GET",
+
+              headers: {
+                Authorization:
+                  `Bearer ${session.access_token}`,
+              },
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
+
+        if (!response.ok) {
+          resumeWindow.close();
+
+          alert(
+            result?.error ||
+              "You are not authorized to view this resume."
+          );
+
+          return;
+        }
+
+        /*
+          Support the common response names
+          used by the secure resume API.
+        */
+
+        const resumeUrl =
+          result?.url ||
+          result?.resumeUrl ||
+          result?.fileUrl;
+
+        if (!resumeUrl) {
+          resumeWindow.close();
+
+          alert(
+            "Resume URL was not returned by the server."
+          );
+
+          return;
+        }
+
+        /*
+          Only the server-generated/authorized
+          URL is sent to the new window.
+        */
+
+        resumeWindow.location.href =
+          resumeUrl;
+      } catch (error) {
+        console.error(
+          "VIEW RESUME ERROR:",
+          error
+        );
+
+        resumeWindow.close();
+
+        alert(
+          "Failed to open resume."
+        );
+      } finally {
+        setResumeLoading(false);
+      }
+    };
+
+  // -------------------------------------------------------
+  // LOADING
+  // -------------------------------------------------------
+
   if (loading) {
     return (
       <div
@@ -157,6 +325,10 @@ export default function CandidateProfilePage() {
     );
   }
 
+  // -------------------------------------------------------
+  // NOT FOUND
+  // -------------------------------------------------------
+
   if (!candidate) {
     return (
       <div
@@ -169,6 +341,10 @@ export default function CandidateProfilePage() {
       </div>
     );
   }
+
+  // -------------------------------------------------------
+  // PAGE
+  // -------------------------------------------------------
 
   return (
     <div
@@ -594,20 +770,24 @@ export default function CandidateProfilePage() {
 
               {/* VIEW RESUME */}
 
-              {candidate.resumeurl && (
-                <a
-                  href={
-                    candidate.resumeurl
-                  }
-                  target="_blank"
-                >
+              {candidate.resumeurl &&
+                candidate.allow_resume_download ===
+                  true && (
                   <button
+                    onClick={
+                      viewResume
+                    }
+                    disabled={
+                      resumeLoading
+                    }
                     style={{
                       width:
                         "100%",
 
                       background:
-                        "#16a34a",
+                        resumeLoading
+                          ? "#86efac"
+                          : "#16a34a",
 
                       color:
                         "white",
@@ -625,16 +805,66 @@ export default function CandidateProfilePage() {
                         "bold",
 
                       cursor:
-                        "pointer",
+                        resumeLoading
+                          ? "wait"
+                          : "pointer",
 
                       fontSize:
                         "16px",
+
+                      opacity:
+                        resumeLoading
+                          ? 0.8
+                          : 1,
                     }}
                   >
-                    View Resume
+                    {resumeLoading
+                      ? "Opening Resume..."
+                      : "View Resume"}
                   </button>
-                </a>
-              )}
+                )}
+
+              {/* RESUME ACCESS DISABLED */}
+
+              {candidate.resumeurl &&
+                candidate.allow_resume_download !==
+                  true && (
+                  <div
+                    style={{
+                      width:
+                        "100%",
+
+                      boxSizing:
+                        "border-box",
+
+                      background:
+                        "#f3f4f6",
+
+                      color:
+                        "#6b7280",
+
+                      padding:
+                        "16px",
+
+                      borderRadius:
+                        "14px",
+
+                      fontWeight:
+                        "bold",
+
+                      fontSize:
+                        "15px",
+
+                      textAlign:
+                        "center",
+
+                      border:
+                        "1px solid #e5e7eb",
+                    }}
+                  >
+                    Resume access disabled by candidate
+                  </div>
+                )}
             </div>
           </div>
         </div>
