@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function GET(req: Request) {
   try {
     // --------------------------------------------------
-    // 1. AUTHENTICATE RECRUITER
+    // 1. AUTHENTICATE USER
     // --------------------------------------------------
 
     const authorization =
@@ -25,25 +25,15 @@ export async function GET(req: Request) {
     }
 
     const token =
-      authorization.replace(
-        "Bearer ",
-        ""
-      );
+      authorization.replace("Bearer ", "");
 
     const {
-      data: {
-        user,
-      },
+      data: { user },
       error: userError,
     } =
-      await supabase.auth.getUser(
-        token
-      );
+      await supabase.auth.getUser(token);
 
-    if (
-      userError ||
-      !user
-    ) {
+    if (userError || !user) {
       return NextResponse.json(
         {
           error: "Unauthorized",
@@ -53,18 +43,15 @@ export async function GET(req: Request) {
     }
 
     // --------------------------------------------------
-    // 2. VERIFY RECRUITER RESUME SEARCH ACCESS
+    // 2. VERIFY EMPLOYER / RECRUITER ACCESS
     // --------------------------------------------------
 
     const {
       data: recruiterProfile,
-      error:
-        recruiterProfileError,
+      error: recruiterProfileError,
     } = await supabase
       .from("profiles")
-      .select(
-        "resumeSearchEnabled"
-      )
+      .select("role, resumeSearchEnabled")
       .eq("id", user.id)
       .single();
 
@@ -74,16 +61,26 @@ export async function GET(req: Request) {
     ) {
       return NextResponse.json(
         {
-          error:
-            "Recruiter profile not found.",
+          error: "Recruiter profile not found.",
         },
         { status: 403 }
       );
     }
 
     if (
-      recruiterProfile.resumeSearchEnabled !==
-      true
+      recruiterProfile.role !== "employer"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Resume access is available only to employer accounts.",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (
+      recruiterProfile.resumeSearchEnabled !== true
     ) {
       return NextResponse.json(
         {
@@ -98,20 +95,16 @@ export async function GET(req: Request) {
     // 3. GET CANDIDATE ID
     // --------------------------------------------------
 
-    const {
-      searchParams,
-    } = new URL(req.url);
+    const { searchParams } =
+      new URL(req.url);
 
     const candidateId =
-      searchParams.get(
-        "candidateId"
-      );
+      searchParams.get("candidateId");
 
     if (!candidateId) {
       return NextResponse.json(
         {
-          error:
-            "Missing candidateId.",
+          error: "Missing candidateId.",
         },
         { status: 400 }
       );
@@ -129,10 +122,7 @@ export async function GET(req: Request) {
       .select(
         "id, resumeurl, allow_resume_download, searchable, profile_visibility"
       )
-      .eq(
-        "id",
-        candidateId
-      )
+      .eq("id", candidateId)
       .single();
 
     if (
@@ -153,8 +143,7 @@ export async function GET(req: Request) {
     // --------------------------------------------------
 
     if (
-      candidate.searchable ===
-      false
+      candidate.searchable === false
     ) {
       return NextResponse.json(
         {
@@ -183,8 +172,7 @@ export async function GET(req: Request) {
     // --------------------------------------------------
 
     if (
-      candidate.allow_resume_download !==
-      true
+      candidate.allow_resume_download !== true
     ) {
       return NextResponse.json(
         {
@@ -226,23 +214,17 @@ export async function GET(req: Request) {
       "/storage/v1/object/sign/resumes/";
 
     if (
-      resumeUrl.includes(
-        publicMarker
-      )
+      resumeUrl.includes(publicMarker)
     ) {
       storagePath =
-        resumeUrl.split(
-          publicMarker
-        )[1];
+        resumeUrl.split(publicMarker)[1];
     } else if (
-      resumeUrl.includes(
-        signedMarker
-      )
+      resumeUrl.includes(signedMarker)
     ) {
       storagePath =
-        resumeUrl.split(
-          signedMarker
-        )[1].split("?")[0];
+        resumeUrl
+          .split(signedMarker)[1]
+          .split("?")[0];
     } else {
       return NextResponse.json(
         {
@@ -279,8 +261,7 @@ export async function GET(req: Request) {
 
     const {
       data: signedUrlData,
-      error:
-        signedUrlError,
+      error: signedUrlError,
     } =
       await supabase.storage
         .from("resumes")

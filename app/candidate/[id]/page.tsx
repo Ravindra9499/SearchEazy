@@ -33,21 +33,53 @@ export default function CandidateProfilePage() {
 
   const loadCandidate =
     async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from("candidate_profiles")
-          .select("*")
-          .eq("id", id)
-          .single();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!error && data) {
-        setCandidate(data);
+        if (!session?.access_token) {
+          setCandidate(null);
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(
+          `/api/candidate/${encodeURIComponent(String(id))}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization:
+                `Bearer ${session.access_token}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok || !result?.candidate) {
+          console.error(
+            "CANDIDATE PROFILE LOAD ERROR:",
+            result?.error || "Failed to load candidate."
+          );
+          setCandidate(null);
+          setLoading(false);
+          return;
+        }
+
+        setCandidate(result.candidate);
+      } catch (error) {
+        console.error(
+          "CANDIDATE PROFILE LOAD ERROR:",
+          error
+        );
+        setCandidate(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
   // -------------------------------------------------------
@@ -113,7 +145,7 @@ export default function CandidateProfilePage() {
                 candidate.id,
 
               candidateEmail:
-                candidate.useremail,
+                candidate.useremail || null,
 
               candidateName:
                 candidate.fullname,
@@ -124,8 +156,10 @@ export default function CandidateProfilePage() {
               candidateLocation:
                 candidate.location,
 
-              resumeUrl:
-                candidate.resumeurl,
+              // Resume access is handled through
+              // /api/resume-access. Do not copy the
+              // stored/private resume URL into shortlist records.
+              resumeUrl: null,
             },
           ]);
 
@@ -554,6 +588,16 @@ export default function CandidateProfilePage() {
                 }
               </div>
 
+              {candidate.phone && (
+                <div>
+                  📞{" "}
+                  <strong>
+                    Phone:
+                  </strong>{" "}
+                  {candidate.phone}
+                </div>
+              )}
+
               <div>
                 💼{" "}
                 <strong>
@@ -770,8 +814,7 @@ export default function CandidateProfilePage() {
 
               {/* VIEW RESUME */}
 
-              {candidate.resumeurl &&
-                candidate.allow_resume_download ===
+              {candidate.allow_resume_download ===
                   true && (
                   <button
                     onClick={
@@ -826,8 +869,7 @@ export default function CandidateProfilePage() {
 
               {/* RESUME ACCESS DISABLED */}
 
-              {candidate.resumeurl &&
-                candidate.allow_resume_download !==
+              {candidate.allow_resume_download !==
                   true && (
                   <div
                     style={{
